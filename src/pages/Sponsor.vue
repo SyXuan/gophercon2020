@@ -1,47 +1,91 @@
 <template>
   <div id="sponsor" class="container">
-    <LogoTop />
+    <LogoTop v-if="$store.state.app.device !== 'mobile'" />
     <div class="background-image">
       <div class="image-wrapper">
         <img
           src="https://gophercon.golang.tw/2020/img/subpage-bg.png"
-          srcset="https://gophercon.golang.tw/2020/img/subpage-bg@2x.png 2x, https://gophercon.golang.tw/2020/img/subpage-bg@3x.png 3x"
+          srcset="
+            https://gophercon.golang.tw/2020/img/subpage-bg@2x.png 2x,
+            https://gophercon.golang.tw/2020/img/subpage-bg@3x.png 3x
+          "
           class="Group-9"
         />
         <img
           src="https://gophercon.golang.tw/2020/img/graphic-sponsor-1.png"
-          srcset="https://gophercon.golang.tw/2020/img/graphic-sponsor-1@2x.png 2x, https://gophercon.golang.tw/2020/img/graphic-sponsor-1@3x.png 3x"
+          srcset="
+            https://gophercon.golang.tw/2020/img/graphic-sponsor-1@2x.png 2x,
+            https://gophercon.golang.tw/2020/img/graphic-sponsor-1@3x.png 3x
+          "
           class="sponsor-1"
-        />
-        <img
-          src="https://gophercon.golang.tw/2020/img/graphic-sponsor-2.png"
-          srcset="https://gophercon.golang.tw/2020/img/graphic-sponsor-2@2x.png 2x, https://gophercon.golang.tw/2020/img/graphic-sponsor-2@3x.png 3x"
-          class="sponsor-2"
         />
       </div>
     </div>
     <div class="content">
+      <div class="card-container individual-sponsor">
+        <div class="card">
+          <h2 class="font-black subtitle">贊助</h2>
+        </div>
+      </div>
       <div class="sponsor-wrapper">
-        <div v-for="sponsor in sponsorList" :key="sponsor.slug" class="sponsor-card">
+        <div
+          v-for="(leveledSponsors, sponsorOrder) in sponsorList"
+          :key="sponsorOrder"
+          :class="`sponsor-card-container ${leveledSponsors[0]}`"
+        >
           <h2 class="sponsor-level">
-            <span class="sponsor-text">{{ sponsorLevelText[sponsor.level] }}</span>
+            <span class="sponsor-level-text">{{
+              sponsorLevelText[leveledSponsors[0]]
+            }}</span>
           </h2>
-          <div class="sponsor-card-content layout-flex-md">
-            <div class="sponsor-img-container layout-flex-md-50">
-              <a :href="`${sponsor.url}`" target="_blank" rel="noopener">
-                <img
-                  :alt="sponsor.name"
-                  :src="`https://gophercon.golang.tw/2020/img/sponsors/${sponsor.image}`"
-                />
-              </a>
+          <div class="sponsor-card">
+            <div
+              v-for="sponsor in leveledSponsors[1]"
+              :key="sponsor.id"
+              class="sponsor-card-header"
+            >
+              <div class="sponsor-card-toggle" @click="toggleSponsor(sponsor)">
+                <div :class="getImgContainerClasses(sponsor)">
+                  <img
+                    :src="`https://gophercon.golang.tw/2020/img/sponsors/${sponsor.image}`"
+                    :alt="`${sponsor.name}`"
+                  />
+                </div>
+                <!-- Toggled content in mobile -->
+                <div
+                  v-if="isSelectedInMobile(sponsor)"
+                  class="sponsor-card-content"
+                >
+                  <a
+                    :href="selectedSponsor.url"
+                    target="_blank"
+                    rel="noopener"
+                    class="sponsor-text"
+                  >
+                    {{ selectedSponsor.name }}
+                    <link-icon />
+                  </a>
+                  <div class="sponsor-text-container layout-flex-md-50">
+                    <p
+                      v-html="selectedSponsor.description"
+                      class="sponsor-text"
+                    ></p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="sponsor-card-content" style="background-color: #f0f2f4;padding: 16px;">
-            <span class="sponsor-name">
-              <span>{{ sponsor.name }}</span>
-            </span>
-            <div class="sponsor-text-container layout-flex-md-50" v-if="sponsor.description">
-              <p class="sponsor-text" v-html="sponsor.description"></p>
+          <!-- Toggled content in desktop -->
+          <div
+            v-if="isSelectedInDesktop(leveledSponsors[0])"
+            class="sponsor-card-content"
+          >
+            <a :href="selectedSponsor.url" target="_blank" rel="noopener">
+              {{ selectedSponsor.name }}
+              <link-icon />
+            </a>
+            <div class="sponsor-text-container layout-flex-md-50">
+              <p v-html="selectedSponsor.description" class="sponsor-text"></p>
             </div>
           </div>
         </div>
@@ -52,32 +96,30 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import { Getter } from 'vuex-class';
-import _ from 'lodash';
-import { markdown } from 'markdown';
-
-import { DeviceType } from '@/store/types/app';
 
 import sponsorData from '@/../public/json/sponsor.json';
 
 import LogoTop from '../components/LogoTop.vue';
 import Sponsor from '../components/Team/Sponsor.vue';
+import LinkIcon from '../components/icons/Link.vue';
 
 interface SponsorData {
+  id: string;
   name: string;
   slug: string;
   image: string;
   description: string;
   url?: string;
+  level: string;
   readmore: boolean;
 }
-import { Route } from 'vue-router';
 
 @Component({
   components: {
     LogoTop,
-    Sponsor
-  }
+    Sponsor,
+    LinkIcon,
+  },
 })
 export default class SponsorPage extends Vue {
   private sponsorLevelText = {
@@ -88,26 +130,68 @@ export default class SponsorPage extends Vue {
     'level-2': '金級',
     'level-3': '銀級',
     thank: '特別感謝',
-    media: '媒體夥伴'
+    media: '媒體夥伴',
   };
 
   private sponsorList: object = {};
 
+  private selectedSponsor: SponsorData = {
+    id: '',
+    name: '',
+    slug: '',
+    image: '',
+    description: '',
+    level: '',
+    readmore: false,
+  };
+
   public mounted() {
     this.processSponsor();
+  }
+
+  private isSponsorSelected(id: string): boolean {
+    return this.selectedSponsor.id === id;
+  }
+
+  private isLevelSelected(level: string): boolean {
+    return this.selectedSponsor.level === level;
+  }
+
+  private getImgContainerClasses(sponsor: SponsorData): object {
+    return {
+      [sponsor.level]: true,
+      'sponsor-img-container': true,
+      '--active': this.isSponsorSelected(sponsor.id),
+    };
+  }
+
+  private static isMobile(): boolean {
+    return !window.matchMedia('(min-width: 768px)').matches;
+  }
+
+  private isSelectedInDesktop(level: string): boolean {
+    return !SponsorPage.isMobile() && this.isLevelSelected(level);
+  }
+
+  private isSelectedInMobile(sponsor: SponsorData): boolean {
+    return SponsorPage.isMobile() && this.isSponsorSelected(sponsor.id);
   }
 
   private processSponsor(): void {
     this.sponsorList = sponsorData;
   }
 
-  private markdownParser(rawContent: string): string {
-    return markdown.toHTML(rawContent);
+  private toggleSponsor(sponsor: SponsorData): void {
+    if (this.selectedSponsor.id === sponsor.id) {
+      this.selectedSponsor = {} as SponsorData;
+    } else {
+      this.selectedSponsor = sponsor;
+    }
   }
 }
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @import '@/assets/scss/mixin.scss';
 @import '@/assets/scss/variables.scss';
 
@@ -146,13 +230,20 @@ $logo-margin-bottom: 20px;
     width: 100vw;
     top: 0;
     left: 0;
-    z-index: 0;
     transform-origin: 0 0;
     margin-top: $navbar-height-mobile;
     z-index: -10;
 
     @include for-size(lg) {
       margin-top: $navbar-height;
+    }
+
+    @include for-size(sm) {
+      height: 100%;
+
+      img {
+        object-fit: fill;
+      }
     }
 
     .image-wrapper {
@@ -180,6 +271,17 @@ $logo-margin-bottom: 20px;
       position: absolute;
       left: 5%;
       bottom: 45%;
+    }
+
+    .sponsor-1,
+    .sponsor-2 {
+      @include for-size(sm) {
+        visibility: hidden;
+      }
+
+      @include for-size(md) {
+        visibility: visible;
+      }
     }
   }
 
@@ -278,33 +380,109 @@ $logo-margin-bottom: 20px;
     padding-right: 82px;
   }
 
-  > .sponsor-card:not(:last-child) {
-    margin-bottom: 40px;
+  .sponsor-card {
+    margin-top: 16px;
   }
 
   h2.sponsor-name {
     margin-bottom: 24px;
   }
 
-  span {
-    font-weight: 900;
-    font-stretch: normal;
-    font-style: normal;
-    line-height: normal;
-    letter-spacing: normal;
-    color: #7bd6eb;
-    &.sponsor-level {
-      font-size: 14px;
+  .sponsor-card-container {
+    &:not(:first-child) {
+      margin-top: 36px;
+    }
+
+    .sponsor-card {
+      display: flex;
+
+      @include for-size(sm) {
+        flex-direction: column;
+
+        .sponsor-card-header {
+          &:not(:first-child) {
+            margin: 4px 0 0 0;
+          }
+        }
+      }
+
+      @include for-size(md) {
+        flex-direction: row;
+
+        .sponsor-card-header {
+          &:not(:first-child) {
+            margin: 0 0 0 4px;
+          }
+        }
+      }
     }
   }
 
-  .sponsor-img-container {
-    padding-top: 13px;
+  .sponsor-card-header {
+    .sponsor-card-toggle {
+      .sponsor-img-container {
+        display: flex;
+        justify-content: center;
+        background-color: #ffffff;
+        border-top: 3px solid transparent;
+        cursor: pointer;
 
-    img {
-      width: 100px;
-      max-width: 100px;
+        &.level-1.--active {
+          border-top-color: #b3f7ff;
+        }
+
+        &.level-2.--active {
+          border-top-color: #ffb976;
+        }
+
+        &.level-3.--active {
+          border-top-color: #dddfe2;
+        }
+
+        &.co-organizer.--active {
+          border-top-color: #61c3ff;
+        }
+
+        &.thank.--active {
+          border-top-color: #bbfad7;
+        }
+
+        img {
+          object-fit: contain;
+        }
+      }
     }
+  }
+
+  .sponsor-card-content {
+    padding: 16px;
+    background-color: #f0f2f4;
+
+    a {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 20px;
+      letter-spacing: normal;
+      color: #61c3ff;
+
+      svg {
+        margin-left: 8px;
+      }
+    }
+
+    .sponsor-text-container {
+      margin-top: 10px;
+    }
+  }
+
+  .sponsor-level-text {
+    font-size: 20px;
+    font-weight: 300;
+    line-height: normal;
+    letter-spacing: normal;
+    color: #61c3ff;
   }
 
   p.sponsor-text {
@@ -315,6 +493,22 @@ $logo-margin-bottom: 20px;
     line-height: 1.71;
     letter-spacing: normal;
     color: #333943;
+  }
+
+  .sponsor-text-container {
+    margin-top: 8px;
+    font-family: SourceHanSansTW;
+    font-size: 14px;
+    font-weight: normal;
+    font-stretch: normal;
+    font-style: normal;
+    line-height: normal;
+    letter-spacing: normal;
+    color: #333943;
+
+    &:first-child:not(:last-child) {
+      margin-bottom: 24px;
+    }
   }
 }
 </style>

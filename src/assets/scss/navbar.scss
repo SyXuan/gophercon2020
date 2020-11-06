@@ -25,7 +25,9 @@
       padding: 0 5%;
 
       @media screen and (max-width: $navbar-mobile-max-width) {
+        display: flex;
         padding: 0 16px;
+        justify-content: space-between;
       }
 
       .logo {
@@ -54,33 +56,54 @@
         &-text {
           display: none;
           margin-left: 8px;
+          color: #ffffff;
+          cursor: pointer;
 
           @media screen and (max-width: $navbar-mobile-max-width) {
-            display: block;
+            display: flex;
+            flex-direction: column;
           }
 
           &__gophercon {
+            line-height: 1.25em;
             font-weight: 700;
-            color: $fontColor;
           }
 
           &__2020 {
+            line-height: 1.25em;
             font-size: 12px;
-            color: $fontColorLevel2;
           }
         }
       }
 
       .menu {
-        color: $fontColor;
+        color: #ffffff;
         width: 100%;
+
+        @media screen and (max-width: $navbar-mobile-max-width) {
+          display: none;
+
+          &.toggled {
+            display: unset;
+            width: 0;
+          }
+        }
       }
 
       .toggle-button {
         display: none;
+        align-self: center;
+        width: 32px;
+        height: 32px;
 
         @media screen and (max-width: $navbar-mobile-max-width) {
           display: inline-block;
+          cursor: pointer;
+        }
+
+        @media screen and (max-width: $screen-xs) {
+          width: 20px;
+          height: 20px;
         }
       }
 
@@ -113,14 +136,14 @@
                 left: 50%;
                 bottom: -28px;
                 transform: translateX(-50%);
-                border-bottom: 4px solid $fontColor;
+                border-bottom: 4px solid #ffffff;
                 min-width: 0;
                 transition: min-width cubic-bezier(0.6, -0.28, 0.735, 0.045) 0.3s;
               }
             }
 
             &.active span:before {
-              min-width: 100px;
+              width: 100%;
             }
           }
         }
@@ -178,6 +201,7 @@
                     &__gophercon,
                     &__2020 {
                       font-size: 12px;
+                      color: #ffffff;
                     }
                   }
                 }
@@ -186,6 +210,7 @@
               .close-button-container {
                 margin-left: auto;
                 height: 48px;
+                cursor: pointer;
 
                 span {
                   display: flex;
@@ -228,7 +253,7 @@
             }
 
             &.active {
-              background: $fontColor;
+              background: #ffffff;
               color: $backgroundColor;
             }
           }
